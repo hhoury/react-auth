@@ -1,14 +1,16 @@
-import { useRef, useState } from 'react';
-
+import { useRef, useState, useContext } from 'react';
+import AuthContext from '../../store/auth-context';
+import {useHistory} from 'react-router-dom';
 import classes from './AuthForm.module.css';
 
 const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
-
+  const history = useHistory();
   const emailInputRef = useRef();
   const passwordInputRef = useRef();
-
   const [isLoading, setIsLoading] = useState(false);
+
+  const authCtx = useContext(AuthContext);
 
   const switchAuthModeHandler = () => {
     setIsLogin((prevState) => !prevState);
@@ -35,26 +37,27 @@ const AuthForm = () => {
         returnSecureToken: true,
       }),
       headers: { 'Content-Type': 'application/json' },
-    }).then((response) => {
-      setIsLoading(false);
-      if (response.ok) {
-        return response.json();
-      } else {
-        return response
-          .json()
-          .then((data) => {
+    })
+      .then((res) => {
+        setIsLoading(false);
+        if (res.ok) {
+          return res.json();
+        } else {
+          return res.json().then((data) => {
             let errorMessage = 'Authentication Failed';
-            alert(errorMessage);
+            // alert(errorMessage);
             throw new Error(errorMessage);
-          })
-          .then((res) => {
-            console.log(res);
-          })
-          .catch((error) => {
-            alert(error.message);
           });
-      }
-    });
+        }
+      })
+      .then((data) => {
+        const expirationTime = new Date(new Date().getTime() + (+data.expiresIn * 1000))
+        authCtx.login(data.idToken, expirationTime.toISOString());
+        history.replace('/');
+      })
+      .catch((error) => {
+        alert(error.message);
+      });
   };
 
   return (
